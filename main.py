@@ -6,10 +6,8 @@ from dotenv import load_dotenv
 import data_manager
 import image_generator
 
-# 環境変数を読み込み
 load_dotenv()
 
-# ログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -20,7 +18,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Botの設定
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -29,7 +26,6 @@ async def on_ready():
     logger.info(f'{bot.user} がログインしました！')
     logger.info(f'Bot ID: {bot.user.id}')
     
-    # スラッシュコマンドを同期
     try:
         synced = await bot.tree.sync()
         logger.info(f'{len(synced)} 個のスラッシュコマンドを同期しました')
@@ -40,9 +36,6 @@ async def on_ready():
 
 @bot.tree.command(name="start", description="新しいタスクを開始します")
 async def start_task(interaction: discord.Interaction, total: int):
-    """
-    新しいタスクを開始する
-    """
     logger.info(f"start コマンドが呼び出されました。ユーザー: {interaction.user}, 総数: {total}")
     
     if total <= 0:
@@ -50,7 +43,6 @@ async def start_task(interaction: discord.Interaction, total: int):
         await interaction.response.send_message("目標値は1以上の整数を入力してください。", ephemeral=True)
         return
     
-    # データを保存
     data_manager.update_progress(total=total, current=0)
     logger.info(f"新しいタスクを開始しました。目標: {total}")
     
@@ -58,49 +50,39 @@ async def start_task(interaction: discord.Interaction, total: int):
 
 @bot.tree.command(name="next", description="進捗を1つ進めます")
 async def next_progress(interaction: discord.Interaction):
-    """
-    進捗を1つ進める
-    """
     logger.info(f"next コマンドが呼び出されました。ユーザー: {interaction.user}")
     
-    # 現在の進捗を取得
     current_data = data_manager.get_current_progress()
     logger.info(f"現在の進捗データ: {current_data}")
     
-    # タスクが開始されているかチェック
     if 'total' not in current_data or 'current' not in current_data:
         logger.warning("開始されているタスクがありません")
         await interaction.response.send_message("開始されているタスクがありません。/start で新しいタスクを開始してください。", ephemeral=True)
         return
     
-    # 既に完了しているかチェック
     if current_data['current'] >= current_data['total']:
         logger.warning("タスクは既に完了しています")
         await interaction.response.send_message("タスクは既に完了しています。/start で新しいタスクを開始してください。", ephemeral=True)
         return
     
-    # 進捗を更新
     success = data_manager.increment_progress()
     if not success:
         logger.error("進捗の更新に失敗しました")
         await interaction.response.send_message("進捗の更新に失敗しました。", ephemeral=True)
         return
     
-    # 更新後の進捗を取得
     updated_data = data_manager.get_current_progress()
     current = updated_data['current']
     total = updated_data['total']
     logger.info(f"更新後の進捗: {current}/{total}")
     
-    # 応答を遅延させる（画像生成に時間がかかる場合があるため）
+    # Discordは3秒以内の最初の応答を求め、画像の生成は3秒を超えることがあるため、先に応答を保留する
     await interaction.response.defer()
     
     try:
-        # 画像を生成
         logger.info("画像生成を開始します")
         image_file = image_generator.generate_image(current, total)
         
-        # 画像のみを投稿
         await interaction.followup.send(file=image_file)
         logger.info("画像投稿完了")
         
@@ -109,7 +91,6 @@ async def next_progress(interaction: discord.Interaction):
         await interaction.followup.send("画像生成に失敗しました")
 
 
-# エラーハンドリング
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
@@ -122,7 +103,6 @@ async def on_application_command_error(interaction, error):
     if not interaction.response.is_done():
         await interaction.response.send_message("コマンドの実行中にエラーが発生しました。", ephemeral=True)
 
-# Botを起動
 if __name__ == "__main__":
     token = os.getenv("DISCORD_BOT_TOKEN")
     if not token:

@@ -1,104 +1,52 @@
 # Dynamic Progress Bot
 
-Discord で進捗を視覚的に管理するための Bot です。ユーザーがコマンドを実行するたびに、進捗状況を表現したユニークな画像を生成・投稿します。
+Discordのスラッシュコマンドで進捗を数え、進捗の数とバーを描いた画像を投稿するBot。画像の背景には、Unsplashから無作為に取得した写真を使う。
 
-## 機能
+## 使い方
 
--   `/start [総数]` - 新しいタスクを開始
--   `/next` - 進捗を 1 つ進める（画像付き）
+- `/start total:20`: 目標の数を20にして、進捗を0に戻す
+- `/next`: 進捗を1つ進め、`3 / 20`のような進捗の数とバーを描いた画像を投稿する
+
+## 必要なもの
+
+- Python 3.12以上
+- Discordのアプリケーション
+- UnsplashのAccess Key: 無くても動作する。無い場合、画像の背景は単色になる
 
 ## セットアップ
 
-### 1. 必要なライブラリをインストール
+1. 依存のライブラリをインストールする
 
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 2. Discord Bot を作成
+2. [Discord Developer Portal](https://discord.com/developers/applications)でアプリケーションを作成し、BotのTokenを取得する
+3. OAuth2のURL GeneratorでScopesの`bot`と`applications.commands`、Bot Permissionsの`Send Messages`と`Attach Files`を選び、生成されたURLからBotをサーバーに招待する
+4. Unsplashを使う場合は、[Unsplash Developers](https://unsplash.com/developers)でアプリケーションを作成し、Access Keyを取得する
+5. `.env.example`を`.env`にコピーし、値を設定する
 
-1. [Discord Developer Portal](https://discord.com/developers/applications)にアクセス
-2. 新しいアプリケーションを作成
-3. Bot セクションでトークンを取得
-4. OAuth2 > URL Generator で以下の権限を設定：
-    - Scopes: `bot` と `applications.commands`
-    - Bot Permissions: 
-      - `Send Messages`
-      - `Use Slash Commands`
-      - `Attach Files`
+   | 変数 | 値 |
+   | --- | --- |
+   | `DISCORD_BOT_TOKEN` | BotのToken。必須 |
+   | `IMAGE_API_KEY` | UnsplashのAccess Key |
+   | `IMAGE_API_BASE_URL` | Unsplash APIのURL。既定値は`https://api.unsplash.com` |
 
-### 3. 画像 API の設定（オプション）
+6. repoのフォルダで起動する
 
-Unsplash API を使用する場合：
+   ```bash
+   python main.py
+   ```
 
-1. [Unsplash Developers](https://unsplash.com/developers)でアカウント作成
-2. 新しいアプリケーションを作成して Access Key を取得
+   起動したフォルダの中の`progress.json`に進捗を、`bot.log`にログを保存する。
 
-### 4. 環境変数の設定
+## 既知の制限
 
-`.env.example`を`.env`にコピーして、必要な値を設定：
+- 進捗はBot全体で1つだけ保存する。招待したすべてのサーバー・チャンネル・ユーザーが同じ進捗を共有し、誰でも`/start`で進捗を0に戻せる
+- `/next`の1回で、背景とバーの模様の写真を取得するため、Unsplash APIを2回呼ぶ。Unsplashで作ったアプリケーションは、本番用の申請が通るまで、APIを1時間に50回までしか呼べない。写真を背景にできる`/next`は、1時間に25回まで。取得に失敗した写真の代わりには単色を使う
+- 画像にUnsplashと撮影者の名前を表示しない。[Unsplash API Guidelines](https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines)は、写真を表示するときにUnsplashと撮影者の名前を示すことを求めている
+- 進捗の数を描くフォントは、`assets/fonts/NotoSansJP-Regular.ttf`、Windowsの`msgothic.ttc`、`arial.ttf`の順に探す。どれも無いと、Pillowの既定のフォントで小さく描く。Windows以外では、フォントのファイルを`assets/fonts/NotoSansJP-Regular.ttf`に置く。`assets/`はrepoに含まれない
 
-```bash
-cp .env.example .env
-```
+## ライセンス
 
-`.env`ファイルを編集：
-
-```env
-DISCORD_BOT_TOKEN=your_discord_bot_token_here
-IMAGE_API_KEY=your_unsplash_access_key_here
-IMAGE_API_BASE_URL=https://api.unsplash.com
-```
-
-### 5. Bot の起動
-
-#### 簡単起動（推奨）
-- **start_bot.bat** をダブルクリック
-
-#### コマンドライン起動
-```bash
-python main.py
-```
-
-## ファイル構成
-
-```
-dynamicProgressBot/
-├── main.py              # Botのメイン処理
-├── data_manager.py      # データ管理（progress.json）
-├── image_generator.py   # 画像生成ロジック
-├── requirements.txt     # 依存ライブラリ
-├── .env                 # 環境変数（作成する）
-├── .env.example         # 環境変数のテンプレート
-├── progress.json        # 進捗データ（自動生成）
-└── assets/
-    └── fonts/           # フォントファイル（オプション）
-```
-
-## 使用方法
-
-1. Bot を Discord サーバーに招待
-2. `/start 20` - 20 個のタスクを開始
-3. `/next` - 進捗を 1 つ進める（画像が生成される）
-
-## 注意事項
-
--   画像 API（Unsplash）のキーが設定されていない場合は、単色の背景画像が使用されます
--   進捗データは`progress.json`に保存されます
--   一度に管理できるタスクは 1 つのみです
-
-## トラブルシューティング
-
-### フォントエラーが発生する場合
-
-日本語フォントファイルを`assets/fonts/`に配置してください。
-推奨フォント：
-
--   Noto Sans JP
--   M+ FONTS
-
-### 画像生成エラーが発生する場合
-
-1. Unsplash API のキーが正しく設定されているか確認
-2. インターネット接続を確認
-3. API の利用制限に達していないか確認
+[MIT](LICENSE)
